@@ -2,6 +2,7 @@ import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import { Sparkles, ArrowRight, Calculator, TrendingUp, Star } from 'lucide-react';
 import { HERO_STATS, type HeroStat } from '@/data/content';
+import { AIRobot } from '@/components/AIRobot';
 
 function useCountUp(target: number, decimals: number, active: boolean, duration = 2000) {
   const [value, setValue] = useState(0);
@@ -51,7 +52,13 @@ export function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <section id="hero" ref={ref} className="relative min-h-screen flex items-center justify-center pt-32 pb-20">
+    <section id="hero" ref={ref} className="relative min-h-screen flex items-center justify-center pt-32 pb-20 overflow-hidden">
+      {/* AI Robot mascot background */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-70">
+        <div className="relative w-[min(90vw,520px)] h-[min(90vw,520px)] lg:w-[600px] lg:h-[600px] lg:absolute lg:right-[5%] lg:top-1/2 lg:-translate-y-1/2">
+          <AIRobot />
+        </div>
+      </div>
       <motion.div style={{ y, opacity }} className="container-max px-4 sm:px-6 lg:px-8 text-center relative z-10">
         {/* Pill Badge */}
         <motion.div
