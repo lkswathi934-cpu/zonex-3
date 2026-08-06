@@ -22,70 +22,12 @@ export const NAV_ITEMS = [
   { label: 'FAQs', href: '#faqs' },
 ];
 
-export const HERO_STATS = [
-  { value: '$2.5M+', label: 'Ad Budget Scaled' },
-  { value: '180+', label: 'Successful Launches' },
-  { value: '99.2%', label: 'Client Satisfaction' },
-  { value: '4.9/5', label: 'Average Rating' },
-];
 
-export interface Project {
-  id: number;
-  title: string;
-  category: 'Web Development' | 'Video Reels & Ads' | 'Brand Identity' | 'SEO Growth';
-  metric: string;
-  metricColor: string;
-  url: string;
-  tech: string[];
-  description: string;
-  image: string;
-}
-
-export const PROJECTS: Project[] = [
-  {
-    id: 1,
-    title: 'ZoneX Academy Platform',
-    category: 'Web Development',
-    metric: 'Live Project',
-    metricColor: 'emerald',
-    url: 'https://zonex-academy.com',
-    tech: ['React', 'Node.js', 'LMS', 'GA4'],
-    description: 'Official ed-tech learning platform built for seamless course delivery and student engagement.',
-    image: '/assets/images/WhatsApp_Image_2026-08-06_at_3.32.41_PM.jpeg',
-  },
-  {
-    id: 2,
-    title: 'SaaS Tech Platform & SEO',
-    category: 'SEO Growth',
-    metric: '#1 Google Rank',
-    metricColor: 'cyan',
-    url: 'https://example.com',
-    tech: ['Next.js', 'Webflow', 'Ahrefs', 'Schema'],
-    description: 'Technical SEO overhaul and content engine for a B2B SaaS — ranking #1 for 40+ commercial keywords and driving 5x organic traffic.',
-    image: 'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  },
-  {
-    id: 3,
-    title: 'Restaurant & Food Chain Web App',
-    category: 'Web Development',
-    metric: '600+ Daily Orders',
-    metricColor: 'gold',
-    url: 'https://example.com',
-    tech: ['React Native', 'Node.js', 'Stripe', 'Maps API'],
-    description: 'A multi-location ordering platform with real-time delivery tracking, loyalty rewards, and a 600+ daily order run rate.',
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  },
-  {
-    id: 4,
-    title: 'Digital Marketing Portfolio',
-    category: 'Brand Identity',
-    metric: 'Live Project',
-    metricColor: 'royal',
-    url: 'https://lithin-digital-marke-7he4.bolt.host',
-    tech: ['React', 'Framer Motion', 'Tailwind', 'Vite'],
-    description: 'High-converting interactive web portfolio showcasing digital marketing agency capabilities and UI animations.',
-    image: '/assets/images/WhatsApp_Image_2026-08-06_at_3.38.35_PM.jpeg',
-  },
+export const HERO_STATS: HeroStat[] = [
+  { prefix: '$', suffix: 'M+', target: 2.5, decimals: 1, label: 'Ad Budget Scaled' },
+  { suffix: '+', target: 180, decimals: 0, label: 'Successful Launches' },
+  { suffix: '%', target: 99.2, decimals: 1, label: 'Client Satisfaction' },
+  { suffix: '/5', target: 4.9, decimals: 1, star: true, label: 'Average Rating' },
 ];
 
 export const PORTFOLIO_FILTERS = ['All Work', 'Web Development', 'Video Reels & Ads', 'Brand Identity', 'SEO Growth'] as const;
@@ -396,3 +338,63 @@ export const BEFORE_AFTER = [
   { label: 'Time to Scale', before: '6–12 months', after: '30–90 days' },
   { label: 'Brand Perception', before: 'Generic / forgettable', after: 'Market leader aesthetic' },
 ];
+
+export interface Project {
+  id: number;
+  title: string;
+  category: 'Web Development' | 'Video Reels & Ads' | 'Brand Identity' | 'SEO Growth';
+  metric: string;
+  metricColor: string;
+  url: string;
+  tech: string[];
+  description: string;
+  image: string;
+}
+
+export const PROJECTS: Project[] = [
+  {
+    id: 1,
+    title: 'ZoneX Academy Platform',
+    category: 'Web Development',
+    metric: 'Live Project',
+    metricColor: 'emerald',
+    url: 'https://zonex-academy.com',
+    tech: ['React', 'Node.js', 'LMS', 'GA4'],
+    description: 'Official ed-tech learning platform built for seamless course delivery and student engagement.',
+    image: '/assets/images/WhatsApp_Image_2026-08-06_at_3.32.41_PM.jpeg',
+  },
+  {
+    id: 2,
+    title: 'SaaS Tech Platform & SEO',
+    category: 'SEO Growth',
+    metric: '#1 Google Rank',
+    metricColor: 'cyan',
+    url: 'https://example.com',
+    tech: ['Next.js', 'Webflow', 'Ahrefs', 'Schema'],
+    description: 'Technical SEO overhaul and content engine for a B2B SaaS — ranking #1 for 40+ commercial keywords and driving 5x organic traffic.',
+    image: 'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  },
+  {
+    id: 3,
+    title: 'Restaurant & Food Chain Web App',
+    category: 'Web Development',
+    metric: '600+ Daily Orders',
+    metricColor: 'gold',
+    url: 'https://example.com',
+    tech: ['React Native', 'Node.js', 'Stripe', 'Maps API'],
+    description: 'A multi-location ordering platform with real-time delivery tracking, loyalty rewards, and a 600+ daily order run rate.',
+    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  },
+  {
+    id: 4,
+    title: 'Digital Marketing Portfolio',
+    category: 'Brand Identity',
+    metric: 'Live Project',
+    metricColor: 'royal',
+    url: 'https://lithin-digital-marke-7he4.bolt.host',
+    tech: ['React', 'Framer Motion', 'Tailwind', 'Vite'],
+    description: 'High-converting interactive web portfolio showcasing digital marketing agency capabilities and UI animations.',
+    image: '/assets/images/WhatsApp_Image_2026-08-06_at_3.38.35_PM.jpeg',
+  },
+];
+

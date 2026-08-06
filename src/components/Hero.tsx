@@ -1,10 +1,51 @@
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { useRef, useEffect, useState } from 'react';
 import { Sparkles, ArrowRight, Calculator, TrendingUp, Star } from 'lucide-react';
-import { HERO_STATS } from '@/data/content';
+import { HERO_STATS, type HeroStat } from '@/data/content';
+
+function useCountUp(target: number, decimals: number, active: boolean, duration = 2000) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else setValue(target);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, decimals, active, duration]);
+  return value.toFixed(decimals);
+}
+
+function StatCard({ stat, active, index }: { stat: HeroStat; active: boolean; index: number }) {
+  const display = useCountUp(stat.target, stat.decimals, active);
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.5 + index * 0.1 }}
+      className="glass rounded-2xl p-5 text-center card-glow-hover hover:border-violet-500/40"
+    >
+      <div className="text-2xl lg:text-3xl font-bold gradient-text flex items-center justify-center gap-1">
+        {stat.star && <Star className="w-5 h-5 text-cyan-400" fill="currentColor" />}
+        {stat.prefix}
+        {display}
+        {stat.suffix}
+      </div>
+      <div className="mt-1 text-xs sm:text-sm text-slate-400 light:text-slate-500">{stat.label}</div>
+    </motion.div>
+  );
+}
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(statsRef, { once: true, margin: '-50px' });
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
@@ -78,25 +119,14 @@ export function Hero() {
 
         {/* Stats Bar */}
         <motion.div
+          ref={statsRef}
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto"
         >
           {HERO_STATS.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 + i * 0.1 }}
-              className="glass rounded-2xl p-5 text-center card-glow-hover hover:border-violet-500/40"
-            >
-              <div className="text-2xl lg:text-3xl font-bold gradient-text flex items-center justify-center gap-1">
-                {i === 3 && <Star className="w-5 h-5 text-cyan-400" fill="currentColor" />}
-                {stat.value}
-              </div>
-              <div className="mt-1 text-xs sm:text-sm text-slate-400 light:text-slate-500">{stat.label}</div>
-            </motion.div>
+            <StatCard key={stat.label} stat={stat} active={inView} index={i} />
           ))}
         </motion.div>
 
