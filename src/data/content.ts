@@ -84,7 +84,7 @@ export const PROJECTS: Project[] = [
     url: 'https://lithin-digital-marke-7he4.bolt.host',
     tech: ['React', 'Framer Motion', 'Tailwind', 'Vite'],
     description: 'High-converting interactive web portfolio showcasing digital marketing agency capabilities and UI animations.',
-    image: '/assets/images/image_13.png',
+    image: '/assets/images/WhatsApp_Image_2026-08-06_at_3.38.35_PM.jpeg',
   },
 ];
 
