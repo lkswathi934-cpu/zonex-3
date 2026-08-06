@@ -53,9 +53,9 @@ export function Hero() {
 
   return (
     <section id="hero" ref={ref} className="relative min-h-screen flex items-center justify-center pt-32 pb-20 overflow-hidden">
-      {/* AI Robot mascot background */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none opacity-70">
-        <div className="relative w-[min(90vw,520px)] h-[min(90vw,520px)] lg:w-[600px] lg:h-[600px] lg:absolute lg:right-[5%] lg:top-1/2 lg:-translate-y-1/2">
+      {/* AI Robot mascot - centered behind hero text */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+        <div className="relative w-[min(85vw,460px)] h-[min(85vw,460px)] sm:w-[min(70vw,520px)] sm:h-[min(70vw,520px)] lg:w-[560px] lg:h-[560px] opacity-40 lg:opacity-45">
           <AIRobot />
         </div>
       </div>

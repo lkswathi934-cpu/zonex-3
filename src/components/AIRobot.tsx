@@ -10,6 +10,7 @@ interface RobotState {
   blinkProgress: number;
   isBlinking: boolean;
   glowPulse: number;
+  scanLineY: number;
 }
 
 export function AIRobot() {
@@ -25,6 +26,7 @@ export function AIRobot() {
     blinkProgress: 0,
     isBlinking: false,
     glowPulse: 0,
+    scanLineY: 0,
   });
 
   useEffect(() => {
@@ -77,6 +79,54 @@ export function AIRobot() {
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
 
+    // Helper: draw a rounded plate shape
+    const drawPlate = (
+      x: number, y: number, w: number, h: number, r: number,
+      fill: string, stroke?: string, strokeWidth?: number
+    ) => {
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2 + r, y - h / 2);
+      ctx.lineTo(x + w / 2 - r, y - h / 2);
+      ctx.quadraticCurveTo(x + w / 2, y - h / 2, x + w / 2, y - h / 2 + r);
+      ctx.lineTo(x + w / 2, y + h / 2 - r);
+      ctx.quadraticCurveTo(x + w / 2, y + h / 2, x + w / 2 - r, y + h / 2);
+      ctx.lineTo(x - w / 2 + r, y + h / 2);
+      ctx.quadraticCurveTo(x - w / 2, y + h / 2, x - w / 2, y + h / 2 - r);
+      ctx.lineTo(x - w / 2, y - h / 2 + r);
+      ctx.quadraticCurveTo(x - w / 2, y - h / 2, x - w / 2 + r, y - h / 2);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = strokeWidth || 1;
+        ctx.stroke();
+      }
+    };
+
+    // Helper: draw a hexagonal bolt
+    const drawBolt = (x: number, y: number, r: number, color: string) => {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        const px = x + Math.cos(ang) * r;
+        const py = y + Math.sin(ang) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Inner highlight
+      ctx.beginPath();
+      ctx.arc(x - r * 0.2, y - r * 0.2, r * 0.3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.fill();
+    };
+
     const draw = (now: number) => {
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
@@ -94,11 +144,12 @@ export function AIRobot() {
         s.targetRotX = mouseRef.current.y * 0.35;
       }
 
-      // Smooth interpolation
+      // Smooth lerp interpolation
       s.rotX += (s.targetRotX - s.rotX) * 0.06;
       s.rotY += (s.targetRotY - s.rotY) * 0.06;
       s.floatPhase += dt * 0.0012;
       s.glowPulse += dt * 0.002;
+      s.scanLineY += dt * 0.05;
 
       // Blink logic
       s.blinkTimer -= dt;
@@ -117,37 +168,39 @@ export function AIRobot() {
       ctx.clearRect(0, 0, w, h);
 
       const cx = w / 2;
-      const floatY = Math.sin(s.floatPhase) * 12;
+      const floatY = Math.sin(s.floatPhase) * 10;
       const cy = h / 2 + floatY;
-      const size = Math.min(w, h) * 0.32;
+      const size = Math.min(w, h) * 0.28;
       const rotY = s.rotY;
       const rotX = s.rotX;
 
-      // Compute pseudo-3D perspective offsets
-      const perspective = (val: number) => val * 0.65;
-      const skewX = rotY * 0.12;
-      const scaleY = 1 - Math.abs(rotX) * 0.06;
+      // Pseudo-3D perspective transforms
+      const skewX = rotY * 0.1;
+      const scaleY = 1 - Math.abs(rotX) * 0.05;
+      const offsetX = rotY * size * 0.12;
+      const offsetY = rotX * size * 0.08;
 
-      // ---- Outer glow aura ----
-      const glowR = size * 1.8;
-      const glowGrad = ctx.createRadialGradient(cx, cy, size * 0.5, cx, cy, glowR);
-      const pulse = 0.3 + Math.sin(s.glowPulse) * 0.08;
-      glowGrad.addColorStop(0, `rgba(139, 92, 246, ${pulse * 0.4})`);
-      glowGrad.addColorStop(0.4, `rgba(34, 211, 238, ${pulse * 0.18})`);
+      // ---- Outer atmospheric glow ----
+      const glowR = size * 2.2;
+      const glowGrad = ctx.createRadialGradient(cx, cy, size * 0.4, cx, cy, glowR);
+      const pulse = 0.25 + Math.sin(s.glowPulse) * 0.06;
+      glowGrad.addColorStop(0, `rgba(139, 92, 246, ${pulse * 0.35})`);
+      glowGrad.addColorStop(0.3, `rgba(34, 211, 238, ${pulse * 0.15})`);
+      glowGrad.addColorStop(0.7, `rgba(139, 92, 246, ${pulse * 0.05})`);
       glowGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
       ctx.fill();
 
-      // ---- Floating particles around robot ----
-      for (let i = 0; i < 6; i++) {
-        const ang = s.floatPhase * 0.5 + (i / 6) * Math.PI * 2;
-        const pr = size * 1.3 + Math.sin(s.floatPhase * 2 + i) * 15;
-        const px = cx + Math.cos(ang) * pr * (1 + rotY * 0.1);
-        const py = cy + Math.sin(ang) * pr * 0.4 + floatY * 0.5;
-        const pAlpha = 0.3 + Math.sin(s.glowPulse * 2 + i) * 0.2;
-        const pSize = 2 + Math.sin(s.glowPulse + i) * 1;
+      // ---- Floating data particles ----
+      for (let i = 0; i < 8; i++) {
+        const ang = s.floatPhase * 0.4 + (i / 8) * Math.PI * 2;
+        const pr = size * 1.6 + Math.sin(s.floatPhase * 2 + i) * 20;
+        const px = cx + Math.cos(ang) * pr * (1 + rotY * 0.08);
+        const py = cy + Math.sin(ang) * pr * 0.45 + floatY * 0.3;
+        const pAlpha = 0.25 + Math.sin(s.glowPulse * 2 + i) * 0.18;
+        const pSize = 1.5 + Math.sin(s.glowPulse + i) * 1;
         ctx.fillStyle = i % 2 === 0
           ? `rgba(34, 211, 238, ${pAlpha})`
           : `rgba(139, 92, 246, ${pAlpha})`;
@@ -156,179 +209,311 @@ export function AIRobot() {
         ctx.fill();
       }
 
-      // ---- Robot body (sphere/dome) ----
+      // ---- Main robot head ----
       ctx.save();
-      ctx.translate(cx, cy);
+      ctx.translate(cx + offsetX, cy + offsetY);
       ctx.transform(1, 0, skewX, scaleY, 0, 0);
 
-      // Main head dome
-      const headGrad = ctx.createRadialGradient(
-        -size * 0.2, -size * 0.25, size * 0.1,
-        0, 0, size
-      );
-      headGrad.addColorStop(0, 'rgba(55, 60, 80, 0.95)');
-      headGrad.addColorStop(0.5, 'rgba(30, 35, 55, 0.95)');
-      headGrad.addColorStop(1, 'rgba(15, 18, 35, 0.98)');
-      ctx.fillStyle = headGrad;
-      ctx.beginPath();
-      ctx.arc(0, 0, size, 0, Math.PI * 2);
-      ctx.fill();
+      const headW = size * 1.15;
+      const headH = size * 1.4;
 
-      // Rim highlight
-      ctx.strokeStyle = 'rgba(139, 92, 246, 0.35)';
-      ctx.lineWidth = 1.5;
+      // ===== Chin / lower jaw plate =====
+      const jawGrad = ctx.createLinearGradient(0, size * 0.3, 0, size * 0.85);
+      jawGrad.addColorStop(0, 'rgba(45, 50, 70, 0.95)');
+      jawGrad.addColorStop(0.5, 'rgba(30, 35, 55, 0.95)');
+      jawGrad.addColorStop(1, 'rgba(20, 24, 40, 0.98)');
+      drawPlate(0, size * 0.55, headW * 0.7, size * 0.5, size * 0.08, jawGrad.toString(), 'rgba(139, 92, 246, 0.25)', 1.5);
+
+      // Jaw tech line
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(0, 0, size, 0, Math.PI * 2);
+      ctx.moveTo(-headW * 0.25, size * 0.55);
+      ctx.lineTo(headW * 0.25, size * 0.55);
       ctx.stroke();
 
-      // Top highlight band
-      const topGrad = ctx.createLinearGradient(0, -size, 0, -size * 0.3);
-      topGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
-      topGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = topGrad;
+      // Jaw vent slots
+      for (let i = 0; i < 3; i++) {
+        const vy = size * 0.62 + i * size * 0.06;
+        ctx.strokeStyle = 'rgba(100, 110, 140, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.12, vy);
+        ctx.lineTo(size * 0.12, vy);
+        ctx.stroke();
+      }
+
+      // ===== Main face plate (central) =====
+      const faceGrad = ctx.createRadialGradient(-size * 0.15, -size * 0.2, size * 0.1, 0, 0, headW);
+      faceGrad.addColorStop(0, 'rgba(60, 65, 88, 0.96)');
+      faceGrad.addColorStop(0.4, 'rgba(40, 45, 65, 0.96)');
+      faceGrad.addColorStop(0.8, 'rgba(25, 28, 45, 0.97)');
+      faceGrad.addColorStop(1, 'rgba(15, 18, 35, 0.98)');
+
+      // Face plate shape: rounded hexagonal / humanoid
       ctx.beginPath();
-      ctx.ellipse(0, -size * 0.55, size * 0.7, size * 0.25, 0, 0, Math.PI * 2);
+      ctx.moveTo(-headW * 0.45, -headH * 0.3);
+      ctx.quadraticCurveTo(-headW * 0.52, -headH * 0.45, -headW * 0.4, -headH * 0.5);
+      ctx.lineTo(-headW * 0.25, -headH * 0.58);
+      ctx.quadraticCurveTo(0, -headH * 0.62, headW * 0.25, -headH * 0.58);
+      ctx.lineTo(headW * 0.4, -headH * 0.5);
+      ctx.quadraticCurveTo(headW * 0.52, -headH * 0.45, headW * 0.45, -headH * 0.3);
+      ctx.lineTo(headW * 0.42, headH * 0.15);
+      ctx.quadraticCurveTo(headW * 0.38, headH * 0.35, headW * 0.28, headH * 0.4);
+      ctx.lineTo(-headW * 0.28, headH * 0.4);
+      ctx.quadraticCurveTo(-headW * 0.38, headH * 0.35, -headW * 0.42, headH * 0.15);
+      ctx.closePath();
+      ctx.fillStyle = faceGrad;
       ctx.fill();
 
-      // ---- Circuit lines on head ----
-      ctx.strokeStyle = 'rgba(34, 211, 238, 0.18)';
+      // Face plate outline
+      ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // ===== Forehead plate (upper helmet) =====
+      const foreheadGrad = ctx.createLinearGradient(0, -headH * 0.62, 0, -headH * 0.25);
+      foreheadGrad.addColorStop(0, 'rgba(50, 55, 78, 0.95)');
+      foreheadGrad.addColorStop(0.5, 'rgba(35, 40, 60, 0.95)');
+      foreheadGrad.addColorStop(1, 'rgba(25, 28, 45, 0.9)');
+      ctx.beginPath();
+      ctx.moveTo(-headW * 0.4, -headH * 0.5);
+      ctx.lineTo(-headW * 0.25, -headH * 0.58);
+      ctx.quadraticCurveTo(0, -headH * 0.62, headW * 0.25, -headH * 0.58);
+      ctx.lineTo(headW * 0.4, -headH * 0.5);
+      ctx.quadraticCurveTo(headW * 0.45, -headH * 0.4, headW * 0.38, -headH * 0.3);
+      ctx.lineTo(-headW * 0.38, -headH * 0.3);
+      ctx.quadraticCurveTo(-headW * 0.45, -headH * 0.4, -headW * 0.4, -headH * 0.5);
+      ctx.closePath();
+      ctx.fillStyle = foreheadGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
       ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) {
-        const yOff = -size * 0.15 + i * size * 0.12;
+      ctx.stroke();
+
+      // Forehead center ridge line
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, -headH * 0.55);
+      ctx.lineTo(0, -headH * 0.32);
+      ctx.stroke();
+
+      // Forehead tech details - small circuit lines
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
+      ctx.lineWidth = 0.8;
+      for (const side of [-1, 1]) {
         ctx.beginPath();
-        ctx.moveTo(-size * 0.8, yOff);
-        ctx.lineTo(-size * 0.3, yOff);
-        ctx.lineTo(-size * 0.25, yOff - 4);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(size * 0.8, yOff);
-        ctx.lineTo(size * 0.3, yOff);
-        ctx.lineTo(size * 0.25, yOff - 4);
+        ctx.moveTo(side * headW * 0.15, -headH * 0.5);
+        ctx.lineTo(side * headW * 0.3, -headH * 0.48);
+        ctx.lineTo(side * headW * 0.32, -headH * 0.4);
         ctx.stroke();
       }
 
-      // ---- Eyes ----
-      const eyeSpacing = size * 0.32;
-      const eyeY = -size * 0.05;
-      const eyeRadius = size * 0.13;
-      // Eye positions shift based on rotation
-      const eyeShiftX = perspective(rotY) * size * 0.08;
-      const eyeShiftY = perspective(rotX) * size * 0.05;
+      // Center forehead sensor / gem
+      const sensorPulse = 0.5 + Math.sin(s.glowPulse * 2) * 0.3;
+      const sensorGrad = ctx.createRadialGradient(0, -headH * 0.45, 0, 0, -headH * 0.45, size * 0.06);
+      sensorGrad.addColorStop(0, `rgba(34, 211, 238, ${sensorPulse})`);
+      sensorGrad.addColorStop(0.5, `rgba(34, 211, 238, ${sensorPulse * 0.4})`);
+      sensorGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+      ctx.fillStyle = sensorGrad;
+      ctx.beginPath();
+      ctx.arc(0, -headH * 0.45, size * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(220, 250, 255, ${sensorPulse})`;
+      ctx.beginPath();
+      ctx.arc(0, -headH * 0.45, size * 0.02, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Blink factor: 1 = open, 0 = closed
+      // ===== Visor / Eye area =====
+      const visorY = -headH * 0.08;
+      const visorW = headW * 0.72;
+      const visorH = size * 0.2;
+
+      // Visor background (dark recessed area)
+      const visorBgGrad = ctx.createLinearGradient(0, visorY - visorH / 2, 0, visorY + visorH / 2);
+      visorBgGrad.addColorStop(0, 'rgba(3, 5, 12, 0.98)');
+      visorBgGrad.addColorStop(0.5, 'rgba(5, 8, 18, 0.98)');
+      visorBgGrad.addColorStop(1, 'rgba(3, 5, 12, 0.98)');
+      drawPlate(0, visorY, visorW, visorH, size * 0.04, visorBgGrad.toString(), 'rgba(34, 211, 238, 0.4)', 1.5);
+
+      // Visor inner glow
+      const visorGlowGrad = ctx.createRadialGradient(0, visorY, 0, 0, visorY, visorW * 0.5);
+      visorGlowGrad.addColorStop(0, `rgba(34, 211, 238, ${0.08 + sensorPulse * 0.04})`);
+      visorGlowGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+      ctx.fillStyle = visorGlowGrad;
+      drawPlate(0, visorY, visorW * 0.95, visorH * 0.85, size * 0.03, visorGlowGrad.toString());
+
+      // Blink factor
       let blinkFactor = 1;
       if (s.isBlinking) {
-        // Triangular blink: close then open
         blinkFactor = 1 - Math.sin(s.blinkProgress * Math.PI);
-        blinkFactor = Math.max(0.05, blinkFactor);
+        blinkFactor = Math.max(0.03, blinkFactor);
       }
+
+      // Eye positions with tracking offset
+      const eyeSpacing = visorW * 0.22;
+      const eyeRadiusX = size * 0.075;
+      const eyeRadiusY = size * 0.06;
+      const eyeShiftX = rotY * size * 0.04;
+      const eyeShiftY = rotX * size * 0.025;
 
       for (const side of [-1, 1]) {
         const ex = side * eyeSpacing + eyeShiftX;
-        const ey = eyeY + eyeShiftY;
+        const ey = visorY + eyeShiftY;
 
-        // Eye socket (dark recess)
-        ctx.fillStyle = 'rgba(5, 8, 18, 0.9)';
-        ctx.beginPath();
-        ctx.ellipse(ex, ey, eyeRadius, eyeRadius * blinkFactor, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (blinkFactor > 0.1) {
+        if (blinkFactor > 0.08) {
           // Glowing eye
-          const eyeGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, eyeRadius);
-          eyeGrad.addColorStop(0, 'rgba(34, 211, 238, 1)');
-          eyeGrad.addColorStop(0.3, 'rgba(34, 211, 238, 0.85)');
-          eyeGrad.addColorStop(0.7, 'rgba(139, 92, 246, 0.5)');
+          const eyeGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, eyeRadiusX * 1.5);
+          eyeGrad.addColorStop(0, 'rgba(230, 250, 255, 1)');
+          eyeGrad.addColorStop(0.15, 'rgba(34, 211, 238, 0.95)');
+          eyeGrad.addColorStop(0.5, 'rgba(34, 211, 238, 0.6)');
+          eyeGrad.addColorStop(0.8, 'rgba(139, 92, 246, 0.3)');
           eyeGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
           ctx.fillStyle = eyeGrad;
           ctx.beginPath();
-          ctx.ellipse(ex, ey, eyeRadius * 0.9, eyeRadius * 0.9 * blinkFactor, 0, 0, Math.PI * 2);
+          ctx.ellipse(ex, ey, eyeRadiusX * 1.4, eyeRadiusY * 1.4 * blinkFactor, 0, 0, Math.PI * 2);
           ctx.fill();
 
           // Bright core
-          ctx.fillStyle = 'rgba(220, 250, 255, 0.95)';
+          ctx.fillStyle = `rgba(240, 252, 255, ${0.9 * blinkFactor})`;
           ctx.beginPath();
-          ctx.ellipse(ex, ey, eyeRadius * 0.35, eyeRadius * 0.35 * blinkFactor, 0, 0, Math.PI * 2);
+          ctx.ellipse(ex, ey, eyeRadiusX * 0.4, eyeRadiusY * 0.4 * blinkFactor, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          // Eye glow aura
-          const auraGrad = ctx.createRadialGradient(ex, ey, eyeRadius, ex, ey, eyeRadius * 2.5);
-          auraGrad.addColorStop(0, 'rgba(34, 211, 238, 0.3)');
+          // Eye aura
+          const auraGrad = ctx.createRadialGradient(ex, ey, eyeRadiusX, ex, ey, eyeRadiusX * 3);
+          auraGrad.addColorStop(0, `rgba(34, 211, 238, ${0.2 * blinkFactor})`);
           auraGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
           ctx.fillStyle = auraGrad;
           ctx.beginPath();
-          ctx.arc(ex, ey, eyeRadius * 2.5, 0, Math.PI * 2);
+          ctx.arc(ex, ey, eyeRadiusX * 3, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          // Closed eye line
-          ctx.strokeStyle = 'rgba(34, 211, 238, 0.5)';
+          // Closed eye - horizontal blink line
+          ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(ex - eyeRadius * 0.7, ey);
-          ctx.lineTo(ex + eyeRadius * 0.7, ey);
+          ctx.moveTo(ex - eyeRadiusX * 0.8, ey);
+          ctx.lineTo(ex + eyeRadiusX * 0.8, ey);
           ctx.stroke();
         }
       }
 
-      // ---- Mouth / chin indicator ----
-      const mouthY = size * 0.25;
-      ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-size * 0.15, mouthY);
-      ctx.lineTo(size * 0.15, mouthY);
-      ctx.stroke();
-
-      // Small chin dots
-      ctx.fillStyle = 'rgba(139, 92, 246, 0.5)';
-      for (let i = 0; i < 3; i++) {
+      // Visor scan line effect
+      const scanY = visorY - visorH / 2 + ((s.scanLineY % (visorH * 2)) - visorH) * 0.5;
+      if (scanY > visorY - visorH / 2 && scanY < visorY + visorH / 2) {
+        const scanGrad = ctx.createLinearGradient(-visorW / 2, scanY, visorW / 2, scanY);
+        scanGrad.addColorStop(0, 'rgba(34, 211, 238, 0)');
+        scanGrad.addColorStop(0.5, 'rgba(34, 211, 238, 0.25)');
+        scanGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+        ctx.strokeStyle = scanGrad;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(-size * 0.08 + i * size * 0.08, size * 0.38, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(-visorW * 0.45, scanY);
+        ctx.lineTo(visorW * 0.45, scanY);
+        ctx.stroke();
       }
 
-      // ---- Antenna ----
-      const antTop = -size * 1.05;
-      ctx.strokeStyle = 'rgba(100, 110, 140, 0.6)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -size * 0.85);
-      ctx.lineTo(0, antTop);
-      ctx.stroke();
-
-      // Antenna tip glow
-      const antPulse = 0.6 + Math.sin(s.glowPulse * 3) * 0.3;
-      const antGrad = ctx.createRadialGradient(0, antTop, 0, 0, antTop, size * 0.12);
-      antGrad.addColorStop(0, `rgba(34, 211, 238, ${antPulse})`);
-      antGrad.addColorStop(0.5, `rgba(34, 211, 238, ${antPulse * 0.5})`);
-      antGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
-      ctx.fillStyle = antGrad;
-      ctx.beginPath();
-      ctx.arc(0, antTop, size * 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(220, 250, 255, ${antPulse})`;
-      ctx.beginPath();
-      ctx.arc(0, antTop, size * 0.04, 0, Math.PI * 2);
-      ctx.fill();
-
-      // ---- Side panels / ears ----
+      // ===== Cheek plates =====
       for (const side of [-1, 1]) {
-        const px = side * size * 0.92;
-        const py = size * 0.05;
-        ctx.fillStyle = 'rgba(40, 45, 65, 0.9)';
+        const cheekX = side * headW * 0.48;
+        const cheekY = size * 0.08;
+        const cheekGrad = ctx.createLinearGradient(cheekX, cheekY - size * 0.15, cheekX, cheekY + size * 0.15);
+        cheekGrad.addColorStop(0, 'rgba(45, 50, 70, 0.9)');
+        cheekGrad.addColorStop(1, 'rgba(25, 28, 45, 0.9)');
+        drawPlate(cheekX, cheekY, size * 0.2, size * 0.3, size * 0.04, cheekGrad.toString(), 'rgba(139, 92, 246, 0.2)', 1);
+
+        // Cheek vent lines
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
+        ctx.lineWidth = 0.8;
+        for (let i = 0; i < 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cheekX - size * 0.06, cheekY - size * 0.04 + i * size * 0.06);
+          ctx.lineTo(cheekX + size * 0.06, cheekY - size * 0.04 + i * size * 0.06);
+          ctx.stroke();
+        }
+      }
+
+      // ===== Side temple / ear modules =====
+      for (const side of [-1, 1]) {
+        const earX = side * headW * 0.55;
+        const earY = -size * 0.05;
+
+        // Main ear housing
+        const earGrad = ctx.createLinearGradient(earX - size * 0.05, earY, earX + size * 0.05, earY);
+        earGrad.addColorStop(0, 'rgba(50, 55, 78, 0.95)');
+        earGrad.addColorStop(0.5, 'rgba(35, 40, 60, 0.95)');
+        earGrad.addColorStop(1, 'rgba(20, 24, 40, 0.95)');
+        ctx.fillStyle = earGrad;
         ctx.beginPath();
-        ctx.ellipse(px, py, size * 0.1, size * 0.18, 0, 0, Math.PI * 2);
+        ctx.ellipse(earX, earY, size * 0.1, size * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(px, py, size * 0.1, size * 0.18, 0, 0, Math.PI * 2);
         ctx.stroke();
-        // Small light on ear
-        ctx.fillStyle = `rgba(34, 211, 238, ${0.4 + Math.sin(s.glowPulse * 2 + side) * 0.2})`;
+
+        // Ear concentric circles (speaker/grille)
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = `rgba(34, 211, 238, ${0.15 + i * 0.05})`;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.ellipse(earX, earY, size * 0.025 + i * size * 0.018, size * 0.06 + i * size * 0.04, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Ear indicator light
+        const earLightPulse = 0.4 + Math.sin(s.glowPulse * 2 + side * 1.5) * 0.25;
+        ctx.fillStyle = `rgba(34, 211, 238, ${earLightPulse})`;
         ctx.beginPath();
-        ctx.arc(px, py - size * 0.05, 2, 0, Math.PI * 2);
+        ctx.arc(earX, earY - size * 0.1, size * 0.015, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      // ===== Neck / collar =====
+      const neckY = size * 0.75;
+      const neckGrad = ctx.createLinearGradient(0, neckY - size * 0.05, 0, neckY + size * 0.1);
+      neckGrad.addColorStop(0, 'rgba(40, 45, 65, 0.9)');
+      neckGrad.addColorStop(1, 'rgba(20, 24, 40, 0.9)');
+      drawPlate(0, neckY, headW * 0.4, size * 0.15, size * 0.03, neckGrad.toString(), 'rgba(139, 92, 246, 0.2)', 1);
+
+      // Neck tech lines
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(-headW * 0.12, neckY);
+      ctx.lineTo(headW * 0.12, neckY);
+      ctx.stroke();
+
+      // ===== Bolt details =====
+      drawBolt(-headW * 0.38, -headH * 0.42, size * 0.018, 'rgba(80, 85, 105, 0.9)');
+      drawBolt(headW * 0.38, -headH * 0.42, size * 0.018, 'rgba(80, 85, 105, 0.9)');
+      drawBolt(-headW * 0.35, headH * 0.32, size * 0.015, 'rgba(80, 85, 105, 0.9)');
+      drawBolt(headW * 0.35, headH * 0.32, size * 0.015, 'rgba(80, 85, 105, 0.9)');
+      drawBolt(-headW * 0.18, size * 0.55, size * 0.012, 'rgba(80, 85, 105, 0.9)');
+      drawBolt(headW * 0.18, size * 0.55, size * 0.012, 'rgba(80, 85, 105, 0.9)');
+
+      // ===== Top highlight gloss =====
+      const glossGrad = ctx.createLinearGradient(0, -headH * 0.6, 0, -headH * 0.2);
+      glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+      glossGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = glossGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, -headH * 0.4, headW * 0.35, headH * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ===== Side edge highlights =====
+      for (const side of [-1, 1]) {
+        const edgeGrad = ctx.createLinearGradient(side * headW * 0.45, 0, side * headW * 0.5, 0);
+        edgeGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        edgeGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.06)');
+        edgeGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.strokeStyle = edgeGrad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(side * headW * 0.45, -headH * 0.4);
+        ctx.lineTo(side * headW * 0.45, headH * 0.3);
+        ctx.stroke();
       }
 
       ctx.restore();
@@ -355,3 +540,6 @@ export function AIRobot() {
     />
   );
 }
+
+
+export { AIRobot }
